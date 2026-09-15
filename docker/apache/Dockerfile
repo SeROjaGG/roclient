@@ -29,6 +29,12 @@ RUN <<'EOF' cat >> /etc/apache2/sites-available/000-default.conf
     <IfModule mod_headers.c>
         Header set Access-Control-Allow-Origin "*"
         Header set Access-Control-Allow-Headers "X-Application"
+        # exro (PLAN-010): the ROenglishRE overlay (data/*.txt, interface bmp, brand art)
+        # is edited in place on the host. Apache serves those loose files directly with
+        # only ETag/Last-Modified, so Chrome heuristic-freshness keeps a stale copy for
+        # minutes-to-hours after an overlay edit. Force revalidation — ETag still gives
+        # cheap 304s. (HttpCache.php already does this for the index.php/GRF path.)
+        Header set Cache-Control "no-cache, must-revalidate"
     </IfModule>
     <Directory /var/www/html>
         Options +FollowSymLinks -MultiViews

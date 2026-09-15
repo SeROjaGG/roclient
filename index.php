@@ -163,13 +163,17 @@ $path      = preg_replace('/\?.*/', '', $path); // remove query
 $directory = basename(dirname(__FILE__));
 
 // Check Allowed directory
-if (!preg_match( '/\/('. $directory . '\/)?(data|BGM)\//', $path)) {
-    Debug::write('Forbidden directory, you can just access files located in data and BGM folder.', 'error');
+// exro (PLAN-010): also allow System/ and SystemEN/ so the ROenglishRE overlay's
+// English lua (itemInfo, Towninfo, quests, signboards) can be served — roBrowser
+// fetches those from remoteClient + 'System/...' / 'SystemEN/...'. SystemEN before
+// System in the alternation so 'SystemEN/' isn't split as 'System' + 'EN/'.
+if (!preg_match( '/\/('. $directory . '\/)?(data|BGM|SystemEN|System)\//', $path)) {
+    Debug::write('Forbidden directory, you can just access files located in data, BGM, System and SystemEN folders.', 'error');
     Debug::output();
 }
 
 // Get file
-$path = preg_replace('/(.*('. $directory . '\/)?)(data|BGM\/.*)/', '$3', $path );
+$path = preg_replace('/(.*('. $directory . '\/)?)(data|BGM|SystemEN|System)(\/.*)/', '$3$4', $path );
 $path = str_replace('/', '\\', $path);
 $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 $file = Client::getFile($path);

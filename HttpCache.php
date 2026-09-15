@@ -116,20 +116,14 @@ class HttpCache
         // Set ETag
         header('ETag: ' . $etag);
 
-        // Determine cache duration based on file type
-        if (in_array($ext, self::$immutableExtensions)) {
-            // Immutable assets - cache for 1 year
-            $maxAge = self::IMMUTABLE_MAX_AGE;
-            header('Cache-Control: public, max-age=' . $maxAge . ', immutable');
-        } else {
-            // Regular files - cache for 30 days
-            $maxAge = self::DEFAULT_MAX_AGE;
-            header('Cache-Control: public, max-age=' . $maxAge);
-        }
-
-        // Set Expires header (for HTTP/1.0 compatibility)
-        $expires = gmdate('D, d M Y H:i:s', time() + $maxAge) . ' GMT';
-        header('Expires: ' . $expires);
+        // exro (PLAN-010): the ROenglishRE loose overlay (data/*.txt, interface BMPs,
+        // brand art) is edited in place on the host and must never be pinned in a
+        // browser's disk cache — the old 'immutable, max-age=1y' on bmp/png/jpg meant
+        // updated buttons/art kept showing the stale Korean copy for a year. Serve
+        // everything as revalidate-always: the ETag still yields cheap 304s for
+        // unchanged files, but a changed overlay file is picked up on the next load.
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: 0');
 
         // Set Last-Modified to now (since we don't track file modification times in GRF)
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');

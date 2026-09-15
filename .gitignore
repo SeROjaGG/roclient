@@ -3,8 +3,11 @@
 /data/*
 /resources/*
 /System/*
+/SystemEN/*
+/datainfo/*
 .env
 .idea
+.DS_Store
 # Generated files
 path-mapping.json
 test_config.php
