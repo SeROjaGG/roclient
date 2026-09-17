@@ -18,71 +18,9 @@ RUN apt-get install -y -qq libpng-dev libjpeg62-turbo-dev libfreetype6-dev && \
 
 RUN rm -f /etc/apache2/sites-available/000-default.conf
 
-RUN <<'EOF' cat >> /etc/apache2/sites-available/000-default.conf
-<VirtualHost *:80>
-    DocumentRoot /var/www/html
-    ErrorDocument 404 /index.php
-
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-    <IfModule mod_headers.c>
-        Header set Access-Control-Allow-Origin "*"
-        Header set Access-Control-Allow-Headers "X-Application"
-        # exro (PLAN-010): the ROenglishRE overlay (data/*.txt, interface bmp, brand art)
-        # is edited in place on the host. Apache serves those loose files directly with
-        # only ETag/Last-Modified, so Chrome heuristic-freshness keeps a stale copy for
-        # minutes-to-hours after an overlay edit. Force revalidation — ETag still gives
-        # cheap 304s. (HttpCache.php already does this for the index.php/GRF path.)
-        Header set Cache-Control "no-cache, must-revalidate"
-    </IfModule>
-    <Directory /var/www/html>
-        Options +FollowSymLinks -MultiViews
-        AllowOverride None
-        Require all granted
-
-        <IfModule mod_rewrite.c>
-            RewriteEngine On
-            RewriteRule ^(.*)\.bmp$ $1\.png [NC,QSA]
-        </IfModule>
-
-        <IfModule mod_speling.c>
-            CheckSpelling On
-            CheckCaseOnly On
-        </IfModule>
-    </Directory>
-
-    <IfModule mod_gzip.c>
-        mod_gzip_on Yes
-        mod_gzip_dechunk Yes
-        mod_gzip_item_include file \.(act|spr|pal|txt|xml|lua|lub|gnd|gat|rsw|rsm)$
-    </IfModule>
-
-    <IfModule mod_mime.c>
-        AddType application/ro-action          .act
-        AddType application/ro-sprite          .spr
-        AddType application/ro-palette         .pal
-        AddType application/ro-ground          .gnd
-        AddType application/ro-altitude        .gat
-        AddType application/ro-world           .rsw
-        AddType application/ro-model           .rsm
-    </IfModule>
-
-    <IfModule mod_deflate.c>
-        AddOutputFilterByType DEFLATE \
-            application/ro-action \
-            application/ro-sprite \
-            application/ro-palette \
-            application/ro-ground \
-            application/ro-altitude \
-            application/ro-world \
-            application/ro-model \
-            text/plain \
-            application/xml
-    </IfModule>
-
-</VirtualHost>
-EOF
+# podman 4.9's imagebuilder has no heredoc (RUN <<EOF) support, so the vhost
+# is a plain file copied in rather than generated inline.
+COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
 
 EXPOSE 80
 
