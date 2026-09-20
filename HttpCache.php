@@ -30,6 +30,15 @@ class HttpCache
     );
 
     /**
+     * Interface texture / data-table extensions the ROenglishRE overlay hand-edits
+     * in place (PLAN-010) -- must always revalidate, never pinned to a long-lived
+     * cache.
+     */
+    private static $overlayProneExtensions = array(
+        'bmp', 'jpg', 'jpeg', 'png', 'gif', 'txt'
+    );
+
+    /**
      * File extensions that should not be cached
      */
     private static $noCacheExtensions = array(
@@ -116,14 +125,21 @@ class HttpCache
         // Set ETag
         header('ETag: ' . $etag);
 
-        // exro (PLAN-010): the ROenglishRE loose overlay (data/*.txt, interface BMPs,
-        // brand art) is edited in place on the host and must never be pinned in a
-        // browser's disk cache — the old 'immutable, max-age=1y' on bmp/png/jpg meant
-        // updated buttons/art kept showing the stale Korean copy for a year. Serve
-        // everything as revalidate-always: the ETag still yields cheap 304s for
-        // unchanged files, but a changed overlay file is picked up on the next load.
-        header('Cache-Control: no-cache, must-revalidate');
-        header('Expires: 0');
+        // exro (PLAN-010) made EVERY extension revalidate-always to stop the
+        // ROenglishRE loose overlay (data/*.txt, interface BMPs, brand art -- edited
+        // in place on the host) from sticking in a year-long browser cache. That fix
+        // was too broad: it also caught the GRF-sourced binary assets (sprites,
+        // models, maps, sounds) that make up the vast majority of a map load and
+        // never change at runtime, forcing a full round-trip (cheap 304, but still a
+        // round-trip to a remote VM) per file on every load -- the actual cause of
+        // slow map loads. Split it back out: interface/overlay-prone extensions stay
+        // revalidate-always; everything else (compiled game data) is truly immutable.
+        if (in_array($ext, self::$overlayProneExtensions)) {
+            header('Cache-Control: no-cache, must-revalidate');
+            header('Expires: 0');
+        } else {
+            header('Cache-Control: public, max-age=' . self::IMMUTABLE_MAX_AGE . ', immutable');
+        }
 
         // Set Last-Modified to now (since we don't track file modification times in GRF)
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
